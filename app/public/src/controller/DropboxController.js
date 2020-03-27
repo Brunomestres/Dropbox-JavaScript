@@ -3,12 +3,12 @@ class DropboxController{
         this.btnSendFileEl = document.querySelector('#btn-send-file');
         this.inputFilesEl = document.querySelector('#files');
         this.snackBarModalEl = document.querySelector('#react-snackbar-root');
+        this.progressBarEl = this.snackBarModalEl.querySelector('.mc-progress-bar-fg')
 
-
-        this.iniEvents();
+        this.initEvents();
     }
 
-    iniEvents()
+    initEvents()
     {
         this.btnSendFileEl.addEventListener('click', event => {
             this.inputFilesEl.click();
@@ -43,6 +43,10 @@ class DropboxController{
                     reject(event);
                 }
 
+                ajax.upload.onprogress = event => {
+                    this.uploadProgress(event,file);
+                }
+
                 let formData = new FormData();
 
                 formData.append('input-file',file);
@@ -54,5 +58,17 @@ class DropboxController{
         })
 
         return Promise.all(promises);
+    }
+
+
+    uploadProgress(event,file)
+    {
+        let loaded = event.loaded;
+        let total = event.total;
+
+        let porcent = parseInt((loaded / total) * 100);
+
+        this.progressBarEl.style.width = `${porcent}%`;
+        
     }
 }
