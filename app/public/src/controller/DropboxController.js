@@ -271,7 +271,6 @@ class DropboxController {
 
             default:
                 return `
-                <li>
                     <svg width="160" height="160" viewBox="0 0 160 160" class="mc-icon-template-content tile__preview tile__preview--icon">
                         <title>1357054_617b.jpg</title>
                         <defs>
@@ -287,9 +286,8 @@ class DropboxController {
                                 <use fill="#F7F9FA" xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#mc-content-unknown-large-b"></use>
                             </g>
                         </g>
-                    </svg>
-                    <div class="name text-center">Arquivo</div>
-                </li>`;
+                    </svg>`
+                    
         }
     }
 
@@ -300,7 +298,9 @@ class DropboxController {
         element.innerHTML = `
                     ${this.getFileIcons(file)}
                     <div class="name text-center">${file.name}</div>
-            `
+            `;
+        
+        this.initEventsLi(element);
         return element ;
     }
 
@@ -309,7 +309,7 @@ class DropboxController {
         var firebaseConfig = {
             apiKey: "",
             authDomain: "dropbox-clone-b609c.firebaseapp.com",
-            databaseURL: "https://dropbox-clone-b609c.firebaseio.com",
+            databaseURL: "",
             projectId: "dropbox-clone-b609c",
             storageBucket: "dropbox-clone-b609c.appspot.com",
             messagingSenderId: "835952773914",
@@ -336,5 +336,17 @@ class DropboxController {
             });
         })
 
+    }
+
+    initEventsLi(li)
+    {
+        li.addEventListener('click', e => {
+
+            if(!e.ctrlKey)
+            {
+
+            }
+            li.classList.toggle('selected')
+        });
     }
 }
