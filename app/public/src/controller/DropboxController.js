@@ -7,12 +7,18 @@ class DropboxController {
         this.nameFileEl = this.snackBarModalEl.querySelector('.filename');
         this.timeLeftEl = this.snackBarModalEl.querySelector('.timeleft');
         this.listFiles = document.querySelector('#list-of-files-and-directories');
+        this.onselectionChange = new Event('selectionchange');
         this.connectFirebase();
         this.initEvents();
         this.readFiles();
     }
 
     initEvents() {
+
+        this.listFiles.addEventListener('selectionchange',e => {
+            console.log(e);
+        });
+
         this.btnSendFileEl.addEventListener('click', event => {
             this.inputFilesEl.click();
         });
@@ -342,6 +348,10 @@ class DropboxController {
     {
         li.addEventListener('click', e => {
             
+            
+
+            this.listFiles.dispatchEvent(this.onselectionChange)
+
             if(e.shiftKey)
             {
                 let firstLi = this.listFiles.querySelector('.selected')
