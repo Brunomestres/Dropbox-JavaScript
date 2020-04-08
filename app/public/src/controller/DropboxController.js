@@ -8,6 +8,11 @@ class DropboxController {
         this.timeLeftEl = this.snackBarModalEl.querySelector('.timeleft');
         this.listFiles = document.querySelector('#list-of-files-and-directories');
         this.onselectionChange = new Event('selectionchange');
+        this.btnNewFolder = document.querySelector('#btn-new-folder');
+        this.btnRename = document.querySelector('#btn-rename');
+        this.btnDelete = document.querySelector('#btn-delete');
+
+
         this.connectFirebase();
         this.initEvents();
         this.readFiles();
@@ -16,7 +21,22 @@ class DropboxController {
     initEvents() {
 
         this.listFiles.addEventListener('selectionchange',e => {
-            console.log(e);
+            switch (this.getSelection().length) {
+                case 0:
+                    this.btnDelete.style.display = 'none';
+                    this.btnRename.style.display = 'none';
+                    break;
+                
+                case 1:
+                    this.btnDelete.style.display = 'block';
+                    this.btnRename.style.display = 'block';
+                    break;
+
+                default:
+                    this.btnDelete.style.display = 'block';
+                    this.btnRename.style.display = 'none';
+                    break;
+            }
         });
 
         this.btnSendFileEl.addEventListener('click', event => {
@@ -41,6 +61,11 @@ class DropboxController {
 
             
         });
+    }
+
+    getSelection()
+    {
+        return this.listFiles.querySelectorAll('.selected');
     }
 
     uploadComplete()
@@ -313,9 +338,9 @@ class DropboxController {
     connectFirebase()
     {
         var firebaseConfig = {
-            apiKey: "AIzaSyCffEjBPJxb2RnWp7fj9AB1BEXS_RFaCww",
+            apiKey: "",
             authDomain: "dropbox-clone-b609c.firebaseapp.com",
-            databaseURL: "https://dropbox-clone-b609c.firebaseio.com",
+            databaseURL: "",
             projectId: "dropbox-clone-b609c",
             storageBucket: "dropbox-clone-b609c.appspot.com",
             messagingSenderId: "835952773914",
@@ -348,9 +373,6 @@ class DropboxController {
     {
         li.addEventListener('click', e => {
             
-            
-
-            this.listFiles.dispatchEvent(this.onselectionChange)
 
             if(e.shiftKey)
             {
@@ -374,7 +396,8 @@ class DropboxController {
                             el.classList.add('selected')
                         }
                     });
-
+                    
+                    this.listFiles.dispatchEvent(this.onselectionChange);
                     return true;
                 }
             }
@@ -385,7 +408,8 @@ class DropboxController {
                 });
             }
 
-            li.classList.toggle('selected')
+            li.classList.toggle('selected');
+            this.listFiles.dispatchEvent(this.onselectionChange);
         });
     }
 }
