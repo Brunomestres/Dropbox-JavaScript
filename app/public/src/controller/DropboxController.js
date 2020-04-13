@@ -19,14 +19,37 @@ class DropboxController {
     }
 
     initEvents() {
+        this.btnDelete.addEventListener('click', e => {
+            this.removeTask().then(responses => {
+                responses.forEach(response=>{
+                    if(response.fields.key)
+                    {
+                        this.getFirebaseRef().child(response.fields.key).remove();
+                    }
+                })
+            }).catch(err => {
+                console.log(err);
+            });
+        });
+        this.btnRename.addEventListener('click', e => {
+            let li = this.getSelection()[0];
 
-        this.listFiles.addEventListener('selectionchange',e => {
+            let file = JSON.parse(li.dataset.file);
+
+            let name = prompt("Renomear o arquivo", file.name);
+            if (name) {
+                file.name = name;
+                this.getFirebaseRef().child(li.dataset.key).set(file);
+            }
+
+        });
+        this.listFiles.addEventListener('selectionchange', e => {
             switch (this.getSelection().length) {
                 case 0:
                     this.btnDelete.style.display = 'none';
                     this.btnRename.style.display = 'none';
                     break;
-                
+
                 case 1:
                     this.btnDelete.style.display = 'block';
                     this.btnRename.style.display = 'block';
@@ -51,7 +74,7 @@ class DropboxController {
                 });
 
                 this.uploadComplete();
-                
+
             }).catch(err => {
                 this.uploadComplete();
                 console.log(err);
@@ -59,17 +82,57 @@ class DropboxController {
 
             this.modalShow();
 
-            
+
         });
     }
+    removeTask() {
+        let promises = [];
+        this.getSelection().forEach(li => {
+            let file = JSON.parse(li.dataset.file);
+            let key = li.dataset.key;
+            let formData = new FormData();
 
-    getSelection()
-    {
+            formData.append('path',file.path);
+            formData.append('key',key);
+
+            promises.push(this.ajax('/file','DELETE',formData));
+
+        });
+        return Promise.all(promises);
+    }
+
+    ajax(url,method='GET',formData= new FormData(), onprogress = function(){}, onloadstart = function(){}) {
+        return new Promise((resolve,reject)=>{
+            let ajax = new XMLHttpRequest();
+            ajax.open(method, url);
+    
+            ajax.onload = event => {
+    
+                try {
+                    resolve(JSON.parse(ajax.responseText))
+                } catch (error) {
+                    reject(error)
+                }
+            }
+    
+            ajax.onerror = event => {
+                reject(event);
+            }
+    
+            ajax.upload.onprogress = onprogress;
+    
+            
+            onloadstart();
+    
+            ajax.send(formData);
+
+        });
+    }
+    getSelection() {
         return this.listFiles.querySelectorAll('.selected');
     }
 
-    uploadComplete()
-    {
+    uploadComplete() {
         this.modalShow(false);
         this.inputFilesEl.value = '';
         this.btnSendFileEl.disabled = false;
@@ -77,8 +140,7 @@ class DropboxController {
     }
 
 
-    getFirebaseRef()
-    {
+    getFirebaseRef() {
         return firebase.database().ref('files');
     }
 
@@ -90,37 +152,15 @@ class DropboxController {
         let promises = [];
 
         [...files].forEach(file => {
-            promises.push(new Promise((resolve, reject) => {
-                let ajax = new XMLHttpRequest();
-                ajax.open('POST', '/upload');
+            let formData= new FormData();
+            formData.append('input-file',file);
 
-                ajax.onload = event => {
-                    
-                    try {
-                        resolve(JSON.parse(ajax.responseText))
-                    } catch (error) {
-                        reject(error)
-                    }
-                }
-
-                ajax.onerror = event => {
-                    reject(event);
-                }
-
-                ajax.upload.onprogress = event => {
-                    this.uploadProgress(event, file);
-                }
-
-                let formData = new FormData();
-
-                formData.append('input-file', file);
-
+            promises.push(this.ajax('/upload','POST',formData, ()=>{
+                this.uploadProgress(event,file);
+            }, ()=>{
                 this.startUploadTime = Date.now();
-
-                ajax.send(formData);
-
             }));
-        })
+        });
 
         return Promise.all(promises);
     }
@@ -180,7 +220,7 @@ class DropboxController {
             case 'image/jpg':
             case 'image/png':
             case 'image/gif':
-                return`
+                return `
                     <svg version="1.1" id="Camada_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="160px" height="160px" viewBox="0 0 160 160" enable-background="new 0 0 160 160" xml:space="preserve">
                     <filter height="102%" width="101.4%" id="mc-content-unknown-large-a" filterUnits="objectBoundingBox" y="-.5%" x="-.7%">
                         <feOffset result="shadowOffsetOuter1" in="SourceAlpha" dy="1"></feOffset>
@@ -220,7 +260,7 @@ class DropboxController {
                     </g>
                 </svg>  `;
                 break;
-            
+
             case 'application/pdf':
                 return `
                 <svg version="1.1" id="Camada_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="160px" height="160px" viewBox="0 0 160 160" enable-background="new 0 0 160 160" xml:space="preserve">
@@ -256,7 +296,7 @@ class DropboxController {
                             c-0.131-1.296,1.072-0.867,1.753-0.876c0.796-0.011,1.668,0.118,1.588,1.293C97.394,93.857,97.226,94.871,96.229,94.8z"></path>
                 </svg> `;
                 break;
-            
+
             case 'audio/mp3':
             case 'audio/ogg':
                 return `
@@ -318,91 +358,85 @@ class DropboxController {
                             </g>
                         </g>
                     </svg>`
-                    
+
         }
     }
 
-    getFileView(file,key) {
+    getFileView(file, key) {
         let element = document.createElement('li');
         element.dataset.key = key;
+        element.dataset.file = JSON.stringify(file);
 
         element.innerHTML = `
                     ${this.getFileIcons(file)}
                     <div class="name text-center">${file.name}</div>
             `;
-        
+
         this.initEventsLi(element);
-        return element ;
+        return element;
     }
 
-    connectFirebase()
-    {
+    connectFirebase() {
         var firebaseConfig = {
             apiKey: "",
-            authDomain: "dropbox-clone-b609c.firebaseapp.com",
+            authDomain: "",
             databaseURL: "",
             projectId: "dropbox-clone-b609c",
             storageBucket: "dropbox-clone-b609c.appspot.com",
             messagingSenderId: "835952773914",
-            appId: "1:835952773914:web:04a53c8414a8ef4ec37aa3",
+            appId: "",
             measurementId: "G-896YLZ2FRH"
         };
-        
+
         firebase.initializeApp(firebaseConfig);
-        
+
     }
 
-    readFiles()
-    {
-        this.getFirebaseRef().on('value', snapshot =>{
+    readFiles() {
+        this.getFirebaseRef().on('value', snapshot => {
 
             this.listFiles.innerHTML = '';
 
 
-            snapshot.forEach( snapshotItem => {
+            snapshot.forEach(snapshotItem => {
                 let key = snapshotItem.key;
                 let data = snapshotItem.val();
-                this.listFiles.appendChild(this.getFileView(data,key));
+                this.listFiles.appendChild(this.getFileView(data, key));
 
             });
         })
 
     }
 
-    initEventsLi(li)
-    {
+    initEventsLi(li) {
         li.addEventListener('click', e => {
-            
 
-            if(e.shiftKey)
-            {
+
+            if (e.shiftKey) {
                 let firstLi = this.listFiles.querySelector('.selected')
-                
-                if(firstLi)
-                {
+
+                if (firstLi) {
                     let indexStart;
                     let indexEnd;
                     let lis = li.parentElement.childNodes;
 
-                    lis.forEach((el, index)=>{
-                        if(firstLi === el) indexStart = index;
-                        if(li === el) indexEnd = index; 
+                    lis.forEach((el, index) => {
+                        if (firstLi === el) indexStart = index;
+                        if (li === el) indexEnd = index;
                     });
-                    let index = [indexStart,indexEnd].sort();
+                    let index = [indexStart, indexEnd].sort();
 
-                    lis.forEach((el,i) => {
-                        if(i >=index[0] && i <= index[1])
-                        {
+                    lis.forEach((el, i) => {
+                        if (i >= index[0] && i <= index[1]) {
                             el.classList.add('selected')
                         }
                     });
-                    
+
                     this.listFiles.dispatchEvent(this.onselectionChange);
                     return true;
                 }
             }
-            if(!e.ctrlKey)
-            {
+            if (!e.ctrlKey) {
                 this.listFiles.querySelectorAll('li.selected').forEach(el => {
                     el.classList.remove('selected');
                 });
