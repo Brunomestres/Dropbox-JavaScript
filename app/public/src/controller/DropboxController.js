@@ -1,5 +1,6 @@
 class DropboxController {
     constructor() {
+        this.currentFolder = ['hcode'];
         this.btnSendFileEl = document.querySelector('#btn-send-file');
         this.inputFilesEl = document.querySelector('#files');
         this.snackBarModalEl = document.querySelector('#react-snackbar-root');
@@ -11,14 +12,29 @@ class DropboxController {
         this.btnNewFolder = document.querySelector('#btn-new-folder');
         this.btnRename = document.querySelector('#btn-rename');
         this.btnDelete = document.querySelector('#btn-delete');
-
+        this.navEl = document.querySelector('#browse-location');
 
         this.connectFirebase();
         this.initEvents();
-        this.readFiles();
+        this.openFolder();
     }
 
     initEvents() {
+
+''
+        this.btnNewFolder.addEventListener('click', event =>{
+            let name = prompt('Nome da nova pasta');
+            if(name)
+            {
+                this.getFirebaseRef().push().set({
+                    name,
+                    type: 'folder',
+                    path: this.currentFolder.join('/')
+                })
+            }
+        });
+
+
         this.btnDelete.addEventListener('click', e => {
             this.removeTask().then(responses => {
                 responses.forEach(response=>{
@@ -100,7 +116,7 @@ class DropboxController {
         });
         return Promise.all(promises);
     }
-
+    
     ajax(url,method='GET',formData= new FormData(), onprogress = function(){}, onloadstart = function(){}) {
         return new Promise((resolve,reject)=>{
             let ajax = new XMLHttpRequest();
@@ -140,8 +156,12 @@ class DropboxController {
     }
 
 
-    getFirebaseRef() {
-        return firebase.database().ref('files');
+    getFirebaseRef(path) {
+        if(!path)
+        {
+            path = this.currentFolder.join('/');
+        }
+        return firebase.database().ref(path);
     }
 
     modalShow(show = true) {
@@ -384,7 +404,7 @@ class DropboxController {
             projectId: "dropbox-clone-b609c",
             storageBucket: "dropbox-clone-b609c.appspot.com",
             messagingSenderId: "835952773914",
-            appId: "",
+            appId: ":",
             measurementId: "G-896YLZ2FRH"
         };
 
@@ -393,6 +413,8 @@ class DropboxController {
     }
 
     readFiles() {
+        this.lastFolder = this.currentFolder.join('/');
+
         this.getFirebaseRef().on('value', snapshot => {
 
             this.listFiles.innerHTML = '';
@@ -401,14 +423,79 @@ class DropboxController {
             snapshot.forEach(snapshotItem => {
                 let key = snapshotItem.key;
                 let data = snapshotItem.val();
-                this.listFiles.appendChild(this.getFileView(data, key));
+                if(data.type)
+                {
+                    this.listFiles.appendChild(this.getFileView(data, key));
+                }
 
             });
         })
 
     }
+    openFolder()
+    {
+        if(this.lastFolder)
+        {
+            this.getFirebaseRef(this.lastFolder).off('value');
+
+        }
+        this.renderNav();
+        this.readFiles();
+    }
+
+    renderNav()
+    {
+        let nav = document.createElement('nav');
+        let path = [];
+        for(let i=0; i < this.currentFolder.length; i++)
+        {
+            let foldeName = this.currentFolder[i];
+            let span = document.createElement('span');
+            path.push(foldeName);
+            if((i + 1) === this.currentFolder.length)
+            {
+                span.innerHTML = foldeName
+            }else {
+                span.className = 'breadcrumb-segment__wrapper';
+                span.innerHTML = `
+                        <span class="ue-effect-container uee-BreadCrumbSegment-link-0">
+                            <a href="#" data-path="${path.join('/')}" class="breadcrumb-segment">${foldeName}</a>
+                        </span>
+                        <svg width="24" height="24" viewBox="0 0 24 24" class="mc-icon-template-stateless" style="top: 4px; position: relative;">
+                            <title>arrow-right</title>
+                            <path d="M10.414 7.05l4.95 4.95-4.95 4.95L9 15.534 12.536 12 9 8.464z" fill="#637282"
+                                fill-rule="evenodd"></path>
+                        </svg>`;
+            }
+            nav.appendChild(span);
+        }
+
+        this.navEl.innerHTML = nav.innerHTML;
+
+        this.navEl.querySelectorAll('a').forEach(a =>{
+            a.addEventListener('click', event =>{
+                event.preventDefault();
+                this.currentFolder = a.dataset.path.split('/');
+                this.openFolder();
+                
+            });
+        });
+    }
 
     initEventsLi(li) {
+        li.addEventListener('dblclick', e =>{
+            let file = JSON.parse(li.dataset.file);
+            switch (file.type)
+            {
+                case 'folder':
+                    this.currentFolder.push(file.name);
+                    this.openFolder();
+                    break;
+                default:
+                    window.open('/file?path=' + file.path);
+            }
+        });
+        
         li.addEventListener('click', e => {
 
 
